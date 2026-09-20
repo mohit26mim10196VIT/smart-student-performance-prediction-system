@@ -303,14 +303,32 @@ export async function getStudentByRegNo(regNo: string): Promise<Student | null> 
 
 export async function createStudent(student: Omit<Student, 'id' | 'created_at'>): Promise<Student> {
   const db = await getDatabase();
+  const regNo = student.reg_no.trim().toUpperCase();
+  const name = student.name.trim();
+  const email = student.email.trim();
+
   db.run(
     `INSERT INTO students (reg_no, name, email, branch, semester, section) VALUES (?, ?, ?, ?, ?, ?)`,
-    [student.reg_no.trim().toUpperCase(), student.name.trim(), student.email.trim(), student.branch, student.semester, student.section]
+    [regNo, name, email, student.branch, student.semester, student.section]
   );
   persistDatabase();
-  const res = db.exec('SELECT last_insert_rowid() as id');
-  const newId = res[0].values[0][0] as number;
-  return (await getStudentById(newId))!;
+
+  const created = await getStudentByRegNo(regNo);
+  if (!created) {
+    const fallback = db.exec('SELECT * FROM students WHERE reg_no = ? ORDER BY id DESC LIMIT 1', [regNo]);
+    const row = fallback?.[0]?.values?.[0];
+    if (row) {
+      const columns = fallback[0].columns;
+      const obj: any = {};
+      columns.forEach((col, idx) => {
+        obj[col] = row[idx];
+      });
+      return obj as Student;
+    }
+    throw new Error('Student record was not found immediately after insertion.');
+  }
+
+  return created;
 }
 
 export async function updateStudent(id: number, student: Partial<Student>): Promise<Student | null> {
@@ -385,14 +403,19 @@ export async function createAcademicRecord(record: Omit<AcademicRecord, 'id' | '
     ]
   );
   persistDatabase();
-  const res = db.exec('SELECT last_insert_rowid() as id');
-  const newId = res[0].values[0][0] as number;
-  const stmt = db.prepare('SELECT * FROM academic_records WHERE id = ?');
-  stmt.bind([newId]);
-  stmt.step();
-  const created = stmt.getAsObject();
+
+  const stmt = db.prepare(
+    'SELECT * FROM academic_records WHERE student_id = ? AND semester = ? ORDER BY id DESC LIMIT 1'
+  );
+  stmt.bind([record.student_id, record.semester]);
+  if (stmt.step()) {
+    const created = stmt.getAsObject();
+    stmt.free();
+    return created as unknown as AcademicRecord;
+  }
   stmt.free();
-  return created as unknown as AcademicRecord;
+
+  throw new Error('Academic record was not found immediately after insertion.');
 }
 
 export async function savePrediction(pred: PredictionResult): Promise<number> {
