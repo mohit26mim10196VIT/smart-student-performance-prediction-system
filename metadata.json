@@ -1,0 +1,6 @@
+{
+  "name": "Smart Student Performance Prediction & Study Recommendation System",
+  "description": "An AI-powered academic performance prediction, risk classification, and personalized study recommendation system with SQLite database management, ML evaluation analytics, and comprehensive academic reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
