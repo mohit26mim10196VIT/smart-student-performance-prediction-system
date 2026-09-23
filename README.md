@@ -120,6 +120,15 @@ npm run dev
 # The app binds to http://localhost:3000
 ```
 
+### Login
+
+The dashboard requires authentication. For local development, use:
+
+- Username: `admin`
+- Password: `admin123`
+
+Set `AUTH_USERNAME` and `AUTH_PASSWORD` in the server environment to replace these defaults. Sessions are stored in memory and expire after 8 hours.
+
 ### Running Unit Tests & ML Training
 ```bash
 # Execute Python training pipeline (optional offline artifact generation)

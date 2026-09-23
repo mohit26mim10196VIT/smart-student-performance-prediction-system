@@ -9,6 +9,7 @@ import { AnalyticsView } from './components/AnalyticsView.tsx';
 import { ReportsView } from './components/ReportsView.tsx';
 import { ModelInspectorView } from './components/ModelInspectorView.tsx';
 import { ProjectInfoView } from './components/ProjectInfoView.tsx';
+import { LoginView } from './components/LoginView.tsx';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -25,7 +26,26 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 
+type AppRoute = '/login' | '/overview' | '/student-data' | '/ai-prediction' | '/study-advisor' | '/analytics' | '/audit-reports' | '/ml-laboratory' | '/viva-specs';
+
+const routeByTab: Record<ActiveTab, AppRoute> = {
+  home: '/overview',
+  students: '/student-data',
+  prediction: '/ai-prediction',
+  recommendations: '/study-advisor',
+  analytics: '/analytics',
+  reports: '/audit-reports',
+  inspector: '/ml-laboratory',
+  about: '/viva-specs'
+};
+
+const tabByRoute: Record<string, ActiveTab> = Object.entries(routeByTab).reduce((routes, [tab, path]) => {
+  routes[path] = tab as ActiveTab;
+  return routes;
+}, {} as Record<string, ActiveTab>);
+
 export function App() {
+  const [route, setRoute] = useState(() => window.location.pathname as AppRoute);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -35,6 +55,18 @@ export function App() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const navigate = (path: AppRoute, replace = false) => {
+    if (window.location.pathname !== path) {
+      if (replace) window.history.replaceState({}, '', path);
+      else window.history.pushState({}, '', path);
+    }
+    setRoute(path);
+    const tab = tabByRoute[path];
+    if (tab) setActiveTab(tab);
+  };
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'home', label: 'Overview', icon: <GraduationCap className="w-4 h-4" /> },
@@ -97,13 +129,73 @@ export function App() {
   };
 
   useEffect(() => {
+    const handlePopState = () => {
+      const nextRoute = window.location.pathname as AppRoute;
+      setRoute(nextRoute);
+      const tab = tabByRoute[nextRoute];
+      if (tab) setActiveTab(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const authResponse = await fetch('/api/auth/me');
+        if (authResponse.ok) {
+          setUser((await authResponse.json()).user);
+          navigate(tabByRoute[route] ? route : '/overview', true);
+        } else {
+          navigate('/login', true);
+        }
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
     const init = async () => {
       setIsLoading(true);
       await Promise.all([loadStudents(), loadAnalytics(), loadMetrics()]);
       setIsLoading(false);
     };
     init();
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    if (user && !tabByRoute[route]) navigate('/overview', true);
+    if (!user && route !== '/login') navigate('/login', true);
+  }, [authChecked, route, user]);
+
+  const handleLogin = async (username: string, password: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (!response.ok) return data.error || 'Unable to sign in';
+      setUser(data.user);
+      navigate('/overview');
+      return null;
+    } catch {
+      return 'Unable to connect to the server';
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    setStudents([]);
+    setSelectedStudent(null);
+    navigate('/login');
+  };
 
   const handleAddStudent = async (studentData: any): Promise<boolean> => {
     try {
@@ -186,6 +278,12 @@ export function App() {
     }
   };
 
+  if (!authChecked) {
+    return <div className="min-h-screen bg-slate-100 flex items-center justify-center text-sm text-slate-500">Checking your session...</div>;
+  }
+
+  if (!user) return <LoginView onLogin={handleLogin} />;
+
   return (
     <div className="min-h-screen bg-slate-100/60 text-slate-800 flex flex-col font-sans">
       {/* Toast alert banner */}
@@ -212,15 +310,17 @@ export function App() {
         selectedStudent={selectedStudent}
         onResetDemo={handleResetDemo}
         isResetting={isResetting}
+        username={user.username}
+        onLogout={handleLogout}
       />
 
-      <div className="relative flex flex-1 min-h-0">
+      <div className="relative flex flex-1 min-h-0 max-md:flex-col">
         <aside
-          className={`${isSidebarCollapsed ? 'w-[88px] md:w-[88px]' : 'w-[270px] md:w-[270px]'} fixed left-0 top-20 z-30 h-[calc(100vh-5rem)] border-r border-slate-200 bg-white/95 p-2.5 transition-all duration-200 overflow-y-auto max-md:static max-md:h-auto max-md:w-full`}
+          className={`${isSidebarCollapsed ? 'w-[88px] md:w-[88px] max-md:h-[58px]' : 'w-[270px] md:w-[270px]'} fixed left-0 top-20 z-30 h-[calc(100vh-5rem)] border-r border-slate-200 bg-white/95 p-2.5 transition-all duration-200 overflow-y-auto max-md:static max-md:h-auto max-md:w-full max-md:border-r-0 max-md:border-b ${isSidebarCollapsed ? 'max-md:overflow-hidden' : ''}`}
         >
           <div className="flex items-center justify-between mb-3 px-1">
             {!isSidebarCollapsed && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <span className={`text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 ${isSidebarCollapsed ? 'md:hidden' : ''}`}>
                 Navigation
               </span>
             )}
@@ -235,31 +335,31 @@ export function App() {
             </button>
           </div>
 
-          <nav className="space-y-2">
+          <nav className={`space-y-2 ${isSidebarCollapsed ? 'max-md:hidden' : ''}`}>
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   id={`nav-item-${item.id}`}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => navigate(routeByTab[item.id])}
                   className={`group flex w-full items-center rounded-xl border px-2.5 py-2.5 text-left text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-                  } ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
+                  } ${isSidebarCollapsed ? 'md:justify-center max-md:justify-between' : 'justify-between'}`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
+                  <div className={`flex items-center ${isSidebarCollapsed ? 'md:justify-center max-md:gap-2.5' : 'gap-2.5'}`}>
                     <span className={`${isActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-slate-700'}`}>
                       {item.icon}
                     </span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
+                    <span className={isSidebarCollapsed ? 'md:hidden' : ''}>{item.label}</span>
                   </div>
 
-                  {!isSidebarCollapsed && item.badge && (
+                  {item.badge && (
                     <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                      className={`${isSidebarCollapsed ? 'md:hidden' : ''} text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
                         isActive ? 'bg-blue-200 text-blue-900' : 'bg-slate-200 text-slate-700'
                       }`}
                     >
@@ -272,7 +372,7 @@ export function App() {
           </nav>
         </aside>
 
-        <main className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} flex-1 min-w-0 max-w-full overflow-y-auto overflow-x-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8`}>
+        <main className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} max-md:ml-0 flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-4 sm:py-8`}>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 space-y-3">
               <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />

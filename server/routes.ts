@@ -16,6 +16,7 @@ import {
 } from './database.ts';
 import { mlEngine, StudentFeatures } from './ml_engine.ts';
 import { generateStudyRecommendation } from './recommendation_engine.ts';
+import { clearSessionCookie, getAuthenticatedUser, login, logout, requireAuth, setSessionCookie } from './auth.ts';
 
 const router = Router();
 
@@ -87,6 +88,29 @@ function validateAcademicRecord(body: any): string | null {
 router.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'Smart Student Performance System', timestamp: new Date().toISOString() });
 });
+
+router.post('/auth/login', (req: Request, res: Response) => {
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const token = login(username, password);
+  if (!token) return res.status(401).json({ error: 'Invalid username or password' });
+  setSessionCookie(res, token);
+  res.json({ user: { username } });
+});
+
+router.get('/auth/me', (req: Request, res: Response) => {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
+  res.json({ user });
+});
+
+router.post('/auth/logout', (req: Request, res: Response) => {
+  logout(req);
+  clearSessionCookie(res);
+  res.json({ success: true });
+});
+
+router.use(requireAuth);
 
 // Module 1: Student CRUD Operations
 router.get('/students', async (_req: Request, res: Response) => {
