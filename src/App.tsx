@@ -312,11 +312,13 @@ export function App() {
         isResetting={isResetting}
         username={user.username}
         onLogout={handleLogout}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       <div className="relative flex flex-1 min-h-0 max-md:flex-col">
         <aside
-          className={`${isSidebarCollapsed ? 'w-[88px] md:w-[88px] max-md:h-[58px]' : 'w-[270px] md:w-[270px]'} fixed left-0 top-20 z-30 h-[calc(100vh-5rem)] border-r border-slate-200 bg-white/95 p-2.5 transition-all duration-200 overflow-y-auto max-md:static max-md:h-auto max-md:w-full max-md:border-r-0 max-md:border-b ${isSidebarCollapsed ? 'max-md:overflow-hidden' : ''}`}
+          className={`mobile-sidebar ${isSidebarCollapsed ? 'mobile-sidebar-collapsed w-[88px] md:w-[88px] max-md:h-[58px] max-md:w-full max-md:overflow-hidden' : 'w-[270px] md:w-[270px] max-md:h-[calc(100dvh-var(--mobile-header-height))] max-md:w-[72%] max-md:overflow-y-auto'} fixed left-0 top-20 z-30 h-[calc(100vh-5rem)] border-r border-slate-200 bg-white/95 p-2.5 transition-all duration-200 overflow-y-auto max-md:fixed max-md:left-0 max-md:top-[var(--mobile-header-height)] max-md:z-40 max-md:max-h-none max-md:border-r-0 max-md:border-b`}
         >
           <div className="flex items-center justify-between mb-3 px-1">
             {!isSidebarCollapsed && (
@@ -327,7 +329,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+              className="mobile-sidebar-toggle ml-auto hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-100 hover:text-slate-900 transition md:inline-flex"
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -342,7 +344,12 @@ export function App() {
                 <button
                   key={item.id}
                   id={`nav-item-${item.id}`}
-                  onClick={() => navigate(routeByTab[item.id])}
+                  onClick={() => {
+                    navigate(routeByTab[item.id]);
+                    if (window.matchMedia('(max-width: 767px)').matches) {
+                      setIsSidebarCollapsed(true);
+                    }
+                  }}
                   className={`group flex w-full items-center rounded-xl border px-2.5 py-2.5 text-left text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
@@ -372,7 +379,7 @@ export function App() {
           </nav>
         </aside>
 
-        <main className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} max-md:ml-0 flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-4 sm:py-8`}>
+        <main className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} max-md:ml-0 flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden max-md:overflow-visible px-3 sm:px-6 lg:px-8 py-4 sm:py-8`}>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 space-y-3">
               <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -451,7 +458,7 @@ export function App() {
 
       {/* Institutional Academic Footer */}
       <footer
-        className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} relative z-40 bg-white border-t border-slate-200 py-6 text-xs text-slate-500 print:hidden`}
+        className={`${isSidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'} max-md:ml-0 relative z-40 w-full shrink-0 bg-white border-t border-slate-200 py-6 text-xs text-slate-500 print:hidden overflow-hidden`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
