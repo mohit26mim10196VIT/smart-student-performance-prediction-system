@@ -317,6 +317,14 @@ export function App() {
       />
 
       <div className="relative flex flex-1 min-h-0 max-md:flex-col">
+        {!isSidebarCollapsed && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={() => setIsSidebarCollapsed(true)}
+            className="fixed left-[72%] right-0 top-[var(--mobile-header-height)] bottom-0 z-30 block bg-transparent md:hidden"
+          />
+        )}
         <aside
           className={`mobile-sidebar ${isSidebarCollapsed ? 'mobile-sidebar-collapsed w-[88px] md:w-[88px] max-md:h-[58px] max-md:w-full max-md:overflow-hidden' : 'w-[270px] md:w-[270px] max-md:h-[calc(100dvh-var(--mobile-header-height))] max-md:w-[72%] max-md:overflow-y-auto'} fixed left-0 top-20 z-30 h-[calc(100vh-5rem)] border-r border-slate-200 bg-white/95 p-2.5 transition-all duration-200 overflow-y-auto max-md:fixed max-md:left-0 max-md:top-[var(--mobile-header-height)] max-md:z-40 max-md:max-h-none max-md:border-r-0 max-md:border-b`}
         >
